@@ -117,23 +117,25 @@ With two arguments BEG and END, which are the marker bounds of the result.")
 
 (cl-defun gt-chatgpt-send (prompt &key root url model temperature extra-options key stream timeout sync)
   (declare (indent 1))
-  (gt-request (or url (concat gt-chatgpt-host gt-chatgpt-path))
-    :sync sync
-    :cache (if pdd-active-cacher 5)
-    :headers `(json (bear ,(encode-coding-string (or key (gt-resolve-key (gt-chatgpt-engine))) 'utf-8)))
-    :data `((model . ,(or model gt-chatgpt-model))
-            (temperature . ,(or temperature gt-chatgpt-temperature))
-            (stream . ,stream)
-            (messages . ,(if (consp prompt)
-                             `[((role . system) (content . ,(or root gt-chatgpt-system-prompt)))
-                               ,@prompt]
-                           `[((role . system) (content . ,(or root gt-chatgpt-system-prompt)))
-                             ((role . user) (content . ,prompt))]))
-            ,@(or extra-options gt-chatgpt-extra-options))
-    :peek (when (and stream (functionp pdd-peek)) pdd-peek)
-    :done (unless stream #'identity)
-    :timeout timeout
-    :max-retry (if stream 0 gt-http-max-retry)))
+  (let ((data `((model . ,(or model gt-chatgpt-model))
+                (temperature . ,(or temperature gt-chatgpt-temperature))
+                (messages . ,(if (consp prompt)
+                                 `[((role . system) (content . ,(or root gt-chatgpt-system-prompt)))
+                                   ,@prompt]
+                               `[((role . system) (content . ,(or root gt-chatgpt-system-prompt)))
+                                 ((role . user) (content . ,prompt))]))
+                ,@(or extra-options gt-chatgpt-extra-options))))
+    (when stream
+      (setq data (append data `((stream . ,stream)))))
+    (gt-request (or url (concat gt-chatgpt-host gt-chatgpt-path))
+      :sync sync
+      :cache (if pdd-active-cacher 5)
+      :headers `(json (bear ,(encode-coding-string (or key (gt-resolve-key (gt-chatgpt-engine))) 'utf-8)))
+      :data data
+      :peek (when (and stream (functionp pdd-peek)) pdd-peek)
+      :done (unless stream #'identity)
+      :timeout timeout
+      :max-retry (if stream 0 gt-http-max-retry))))
 
 (cl-defmacro gt-chatgpt-with-stream-buffer ((content finish) &rest args)
   "Help to parse the stream buffer and output every hunk.
