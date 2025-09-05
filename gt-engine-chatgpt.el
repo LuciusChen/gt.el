@@ -50,7 +50,8 @@
    (tts-host      :initarg :tts-host :initform nil)
    (tts-path      :initarg :tts-path :initform "/v1/audio/speech")
    (tts-model     :initarg :tts-model :initform "gpt-4o-mini-tts")
-   (parse         :initform (gt-chatgpt-parser))))
+   (parse         :initform (gt-chatgpt-parser))
+   (headers       :initarg :headers :initform nil)))
 
 
 ;;; Translate
@@ -115,7 +116,7 @@ With two arguments BEG and END, which are the marker bounds of the result.")
          :host (url-host (url-generic-parse-url (or host gt-chatgpt-host))))
         gt-chatgpt-key (getenv "OPENAI_API_KEY"))))
 
-(cl-defun gt-chatgpt-send (prompt &key root url model temperature extra-options key stream timeout sync)
+(cl-defun gt-chatgpt-send (prompt &key root url model temperature extra-options key stream timeout sync headers)
   (declare (indent 1))
   (let ((data `((model . ,(or model gt-chatgpt-model))
                 (temperature . ,(or temperature gt-chatgpt-temperature))
@@ -130,7 +131,7 @@ With two arguments BEG and END, which are the marker bounds of the result.")
     (gt-request (or url (concat gt-chatgpt-host gt-chatgpt-path))
       :sync sync
       :cache (if pdd-active-cacher 5)
-      :headers `(json (bear ,(encode-coding-string (or key (gt-resolve-key (gt-chatgpt-engine))) 'utf-8)))
+      :headers (or headers `(json (bear ,(encode-coding-string (or key (gt-resolve-key (gt-chatgpt-engine))) 'utf-8))))
       :data data
       :peek (when (and stream (functionp pdd-peek)) pdd-peek)
       :done (unless stream #'identity)
@@ -177,7 +178,7 @@ With two arguments BEG and END, which are the marker bounds of the result.")
 
 (cl-defmethod gt-execute ((engine gt-chatgpt-engine) task)
   (with-slots (text src tgt res translator markers) task
-    (with-slots (host path model prompt root temperature extra-options timeout stream rate-limit parse) engine
+    (with-slots (host path model prompt root temperature extra-options timeout stream rate-limit parse headers) engine
       (when (and stream (cdr (oref translator text)))
         (user-error "Multiple parts not support streaming"))
       (let ((url (concat (or host gt-chatgpt-host) (or path gt-chatgpt-path)))
@@ -194,7 +195,8 @@ With two arguments BEG and END, which are the marker bounds of the result.")
                              (let ((s (string-replace "{{lang}}" (alist-get tgt gt-lang-codes) prompt)))
                                (string-replace "{{text}}" item s)))
             :url url :model model :temperature temperature :extra-options extra-options
-            :key (gt-resolve-key engine) :root root :timeout timeout :stream stream))))))
+            :key (gt-resolve-key engine) :root root :timeout timeout :stream stream
+            :headers headers))))))
 
 (cl-defmethod gt-parse ((_ gt-chatgpt-parser) (task gt-task))
   (condition-case err
