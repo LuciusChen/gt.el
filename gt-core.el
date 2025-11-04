@@ -726,7 +726,7 @@ See gt-tests.el for details."
   "Make completion table that ensure ITEMS sort by original ORDER."
   (lambda (input pred action)
     (if (eq action 'metadata)
-        `(metadata (category . "gt")
+        `(metadata (category . gt)
                    (display-sort-function . ,(or order #'identity)))
       (complete-with-action action items input pred))))
 
