@@ -48,8 +48,18 @@ This buffer is for text that is not saved, and for Lisp evaluation.
   (should-not (gt-word-p 'zh "你好 吧"))
   (should-not (gt-word-p 'zh "你好，吧"))
   (should (gt-word-p 'en "hello"))
+  ;; Word with surrounding punctuation should be recognized
+  (should (gt-word-p 'en "hello,"))
+  (should (gt-word-p 'en "hello."))
+  (should (gt-word-p 'en ".hello"))
+  (should (gt-word-p 'en ",hello."))
+  (should (gt-word-p 'en "\"hello\""))
+  ;; Multiple words should not be recognized
   (should-not (gt-word-p 'en "hello,world"))
-  (should-not (gt-word-p 'en "hello world")))
+  (should-not (gt-word-p 'en "hello world"))
+  ;; Empty or only punctuation should not be recognized
+  (should-not (gt-word-p 'en ","))
+  (should-not (gt-word-p 'en "...")))
 
 (ert-deftest test--gt-pick-items-by-thing ()
   (should (null (gt-pick-items-by-thing nil nil)))

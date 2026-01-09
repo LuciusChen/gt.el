@@ -787,7 +787,9 @@ the buffer will returned as the result."
 
 (cl-defgeneric gt-word-p (lang text)
   "Whether TEXT is a single word in LANG.
-This is a generic method, improve it for specific LANG as you wish."
+This is a generic method, improve it for specific LANG as you wish.
+For non-Chinese text, punctuation at the beginning and end is stripped
+before checking, so \"hello,\" and \",hello.\" are recognized as words."
   (setq text (string-trim text))
   (if (eq lang 'zh)
       (and (< (length text) 5)
@@ -796,9 +798,13 @@ This is a generic method, improve it for specific LANG as you wish."
              (goto-char (point-min))
              (while (re-search-forward "\\s." nil t) (replace-match ""))
              (equal (thing-at-point 'word) text)))
-    (with-temp-buffer
-      (insert text)
-      (equal (thing-at-point 'word) text))))
+    ;; Strip leading and trailing punctuation before checking
+    (let ((stripped (replace-regexp-in-string
+                     "\\`[^[:alnum:]]+\\|[^[:alnum:]]+\\'" "" text)))
+      (and (not (string-empty-p stripped))
+           (with-temp-buffer
+             (insert stripped)
+             (equal (thing-at-point 'word) stripped))))))
 
 (defun gt-system-language ()
   "Detect the system's UI language and return it as a symbol."
