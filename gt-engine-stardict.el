@@ -107,6 +107,8 @@
     (cl-loop for d across (json-read)
              collect (cons (alist-get 'name d) (alist-get 'wordcount d)))))
 
+(defvar gt-buffer-render-translator)
+
 (defun gt-stardict-switch-dict ()
   (interactive)
   (let* ((task (get-char-property (point) 'gt-task))

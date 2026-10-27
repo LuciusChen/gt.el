@@ -51,7 +51,9 @@
    (tts-path      :initarg :tts-path :initform "/v1/audio/speech")
    (tts-model     :initarg :tts-model :initform "gpt-4o-mini-tts")
    (parse         :initform (gt-chatgpt-parser))
-   (headers       :initarg :headers :initform nil)))
+   (headers       :initarg :headers :initform nil
+                  :documentation "Extra request headers, merged with the default ones.
+A header with the same name as a default one replaces it.")))
 
 
 ;;; Translate
@@ -78,7 +80,7 @@
 
 (defcustom gt-chatgpt-temperature 1
   "Temperature of ChatGPT."
-  :type 'natnum
+  :type 'number
   :group 'gt-chatgpt)
 
 (defcustom gt-chatgpt-extra-options nil
@@ -131,7 +133,8 @@ With two arguments BEG and END, which are the marker bounds of the result.")
     (gt-request (or url (concat gt-chatgpt-host gt-chatgpt-path))
       :sync sync
       :cache (if pdd-active-cacher 5)
-      :headers (or headers `(json (bear ,(encode-coding-string (or key (gt-resolve-key (gt-chatgpt-engine))) 'utf-8))))
+      ;; pdd keeps the first header of each name, so custom ones override defaults
+      :headers `(,@headers json (bear ,(encode-coding-string (or key (gt-resolve-key (gt-chatgpt-engine))) 'utf-8)))
       :data data
       :peek (when (and stream (functionp pdd-peek)) pdd-peek)
       :done (unless stream #'identity)

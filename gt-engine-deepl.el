@@ -67,6 +67,7 @@
                                  (pl . "PL") ; Polish
                                  (pt . "PT") ; Portuguese (all Portuguese varieties mixed)
                                  (ru . "RU") ; Russian
+                                 (ko . "KO") ; Korean
                                  ))
 
 (defun gt-deepl-lang (lang)
@@ -110,7 +111,10 @@ Supported list: %s" lang (mapconcat #'car gt-deepl-langs-mapping ", "))))
 
 (cl-defmethod gt-parse ((_ gt-deepl-parser) task)
   (cl-loop for item in (oref task res)
-           for str = (decode-coding-string (mapconcat #'cdadr (cdar item) "\n") 'utf-8)
+           for str = (decode-coding-string
+                      (mapconcat (lambda (tr) (alist-get 'text tr))
+                                 (alist-get 'translations item) "\n")
+                      'utf-8)
            collect (string-trim str) into lst
            finally (oset task res lst)))
 

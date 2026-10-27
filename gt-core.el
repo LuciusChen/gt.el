@@ -196,7 +196,17 @@
 
 (defvar gt-source-text-transformer nil
   "A function used to preprocessing the text to translate or speak.
-With function signature (text &optional engine speak-p).")
+With function signature (text &optional engine speak-p).
+
+For example, set it to `gt-source-text-unfill' to join hard-wrapped lines
+before translation.")
+
+(defun gt-source-text-unfill (text &rest _)
+  "Join hard-wrapped lines in TEXT, keeping blank lines as paragraph breaks.
+Useful as `gt-source-text-transformer' for eww, Info, mail and so on."
+  (mapconcat (lambda (para) (replace-regexp-in-string "[ \t]*\n[ \t]*" " " para))
+             (split-string text "\n\\(?:[ \t]*\n\\)+" t "[ \t\n]+")
+             "\n\n"))
 
 (defvar-local gt-tracking-marker nil)
 
@@ -808,7 +818,7 @@ This is a generic method, improve it for specific LANG as you wish."
            (or (getenv "LC_ALL") (getenv "LANG")))
           ((eq system-type 'windows-nt)
            (ignore-errors
-             (shell-command-to-string "powershell -NoProfile -NonInteractive -Command \"Get-UICulture.Name\"")))
+             (shell-command-to-string "powershell -NoProfile -NonInteractive -Command \"(Get-UICulture).Name\"")))
           (t nil))))
     (if (and lang-code-str (string-match "\\`[a-zA-Z]\\{2\\}" lang-code-str))
         (intern (downcase (match-string 0 lang-code-str)))
@@ -885,7 +895,7 @@ This is a generic method, you can extend the V as you wish."
              (setq notp t))
            (funcall
             (if notp #'not #'identity)
-            (cl-call-next-method v text src text))))
+            (cl-call-next-method v text src tgt))))
         ((consp v) ; compose as: (or word (and not-parts src:zh))
          (unless (member (car v) '(or and)) (push 'or v))
          (funcall (if (eq (pop v) 'or) #'cl-some #'cl-every) #'identity
@@ -1003,7 +1013,7 @@ Bind VAR to item of ITEMS which can be used in BODY."
   "Translation languages or targets.
 
 This is a list which element is a language string or symbol described in
-ISO 939-1. The taker will use this to determine the translate source and target.
+ISO 639-1. The taker will use this to determine the translate source and target.
 
 For example, if you want to translate between a and b, just set like:
 
@@ -1698,8 +1708,9 @@ When output a task, hint that this is for a stream request.")
     (not (equal version (oref translator version)))))
 
 (defun gt-task-cancelled-p (task)
-  (when (vectorp task)
-    (eq (car-safe (aref (oref task proc) 3)) 'cancel)))
+  (let ((proc (oref task proc)))
+    (and (pdd-task-p proc)
+         (eq (car-safe (aref proc 3)) 'cancel))))
 
 
 ;;; Text to Speech

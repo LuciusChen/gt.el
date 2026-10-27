@@ -56,6 +56,7 @@ Manually close the frame with `q'.")
 
 (declare-function posframe-show "ext:posframe.el" t t)
 (declare-function posframe-delete "ext:posframe.el" t t)
+(declare-function posframe-delete-frame "ext:posframe.el" t t)
 (declare-function posframe-hide "ext:posframe.el" t t)
 (declare-function posframe-refresh "ext:posframe.el" t t)
 (declare-function posframe-poshandler-frame-top-right-corner "ext:posframe.el" t t)
@@ -151,9 +152,16 @@ Other operations in the childframe buffer, just like in 'gt-buffer-render'.")
 (defvar gt-posframe-pin-render-poshandler #'posframe-poshandler-frame-top-right-corner)
 
 (cl-defmethod gt-init ((render gt-posframe-pin-render) translator)
-  (with-slots (width height min-width min-height bd-width forecolor backcolor bd-color fri-color padding position frame-params init) render
-    (if (and (get-buffer gt-posframe-pin-render-buffer) gt-posframe-pin-render-frame)
+  (with-slots (width height bd-width forecolor backcolor bd-color fri-color padding position frame-params) render
+    (if (and (get-buffer gt-posframe-pin-render-buffer)
+             (frame-live-p gt-posframe-pin-render-frame)
+             ;; called from its parent frame, or from inside the pin frame itself (e.g. `t')
+             (memq (selected-frame) (list gt-posframe-pin-render-frame
+                                          (frame-parent gt-posframe-pin-render-frame))))
         (make-frame-visible gt-posframe-pin-render-frame)
+      ;; frame is stale (e.g. its emacsclient frame was closed), create a new one
+      (when (get-buffer gt-posframe-pin-render-buffer)
+        (posframe-delete-frame gt-posframe-pin-render-buffer))
       (setq gt-posframe-pin-render-frame
             (let ((inhibit-read-only t))
               (apply #'posframe-show gt-posframe-pin-render-buffer
@@ -184,8 +192,7 @@ Other operations in the childframe buffer, just like in 'gt-buffer-render'.")
       (gt-buffer-render-init gt-posframe-pin-render-buffer render translator))
     ;; setup
     (with-current-buffer gt-posframe-pin-render-buffer
-      (gt-buffer-render-key ("q" "Close") (posframe-hide gt-posframe-pin-render-buffer))
-      (if (functionp init) (pdd-funcall init (list translator))))))
+      (gt-buffer-render-key ("q" "Close") (posframe-hide gt-posframe-pin-render-buffer)))))
 
 (cl-defmethod gt-output ((render gt-posframe-pin-render) (translator gt-translator))
   (let ((gt-buffer-render-output-hook gt-posframe-pin-render-output-hook))
